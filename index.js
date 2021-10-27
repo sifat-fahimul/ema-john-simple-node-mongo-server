@@ -12,7 +12,6 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fj83e.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-
 async function run() {
     try {
         await client.connect();
@@ -58,7 +57,9 @@ async function run() {
 }
 
 run().catch(console.dir)
-
+app.get('/help', (req, res) => {
+    res.send('thid is help')
+})
 app.get('/', (req, res) => {
     res.send('Ema john server is running')
 });
