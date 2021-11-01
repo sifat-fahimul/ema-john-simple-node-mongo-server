@@ -2,9 +2,23 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
+var admin = require("firebase-admin");
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+//firebase admin initialization
+
+
+
+var serviceAccount = require("./ema-john-simple-reac-firebase-adminsdk-ndb02-0c7e637401.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+
+
 
 //middleware
 app.use(cors());
@@ -13,6 +27,22 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fj83e.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function verifyToken(req, res, next) {
+    if (req.headers?.authorization?.startsWith('Bearer')) {
+        const idToken = req.headers.authorization.split('Bearer ')[1];
+        try {
+            const decoderUser = await admin.auth().verifyIdToken(idToken);
+            req.decoderUserEmail = decoderUser.email;
+        }
+        catch {
+
+        }
+    }
+    next()
+}
+
+
 async function run() {
     try {
         await client.connect();
@@ -44,9 +74,24 @@ async function run() {
             const products = await productCollection.find(query).toArray();
             res.json(products)
         })
+        // Get orders api
+        app.get('/orders', verifyToken, async (req, res) => {
+            const email = req.query.email;
+            if (req.decoderUserEmail === email) {
+                const query = { email: email }
+                const cursor = orderCollection.find(query)
+                const orders = await cursor.toArray()
+                res.json(orders)
+            }
+            else {
+                res.status(401).json({ message: 'User not Found' })
+            }
+
+        });
         //Add orders API
         app.post('/orders', async (req, res) => {
             const order = req.body;
+            order.createdAt = new Date()
             const result = await orderCollection.insertOne(order);
             res.json(result);
         })
